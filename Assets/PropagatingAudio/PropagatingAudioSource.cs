@@ -6,7 +6,7 @@ public class PropagatingAudioSource : MonoBehaviour {
   public float MaxDistance = 20f;
 
   public AudioClip Clip;
-  public float Volume;
+  public float Volume = 1f;
   public bool PlayOnAwake;
   public bool Loop;
 

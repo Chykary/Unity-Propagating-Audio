@@ -636,7 +636,7 @@ PlayerSettings:
       daydreamIconBackground: {fileID: 0}
   cloudServicesEnabled: {}
   facebookSdkVersion: 7.9.4
-  apiCompatibilityLevel: 2
+  apiCompatibilityLevel: 3
   cloudProjectId: b38162f5-7edb-4b2a-ba88-8110bf842126
   projectName: Unity-2D-Propagating-Audio
   organizationId: chikari

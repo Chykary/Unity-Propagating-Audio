@@ -51,5 +51,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7aa69169ea886694c887fb0b808cdea8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  AudioClipPoolSize: 50
-  Speaker: {fileID: 1004325773649662, guid: 40b2fab8bd919f548b3543695c1b3050, type: 2}
