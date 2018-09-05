@@ -4,35 +4,44 @@ using UnityEngine;
 public class CameraMover : MonoBehaviour {
   public Vector3 left;
   public Vector3 right;
-  public float time = 3f;
 
-  private void Start()
-  {
-    StartCoroutine(Mover());
-  }
+  public PropagatingAudioSource Radio;
 
-  private IEnumerator Mover()
+  public GameObject Room;
+  public GameObject Boom;
+
+  private bool isLeft;
+
+  private void Update()
   {
-    while(true)
+    if (Input.GetKeyDown(KeyCode.Alpha1))
     {
-      yield return StartCoroutine(Mover(true));
-      yield return StartCoroutine(Mover(false));
-    }
-  }
-
-  private IEnumerator Mover(bool dirRight)
-  {
-    Vector3 start = dirRight ? left : right;
-    Vector3 end = dirRight ? right : left;
-
-    float passed = 0f;
-    while(passed < time)
-    {
-      passed += Time.deltaTime;
-      transform.position = Vector3.Lerp(start, end, passed / time);
-      yield return null;
+      transform.position = isLeft ? left : right;
+      isLeft = !isLeft;
     }
 
-    yield return new WaitForSeconds(1.5f);
+    if (Input.GetKeyDown(KeyCode.Alpha2))
+    {
+      if (Radio.isPlaying)
+      {
+        Radio.Stop();
+      }
+      else
+      {
+        Radio.Play();
+      }
+    }
+
+    if (Input.GetKeyDown(KeyCode.Alpha3))
+    {
+      GameObject boom = Instantiate(Boom, Room.transform);
+      StartCoroutine(DisposeBoom(boom));
+    }
+    }
+
+  private IEnumerator DisposeBoom(GameObject boom)
+  {
+    yield return new WaitForSeconds(5f);
+    Destroy(boom);
   }
 }

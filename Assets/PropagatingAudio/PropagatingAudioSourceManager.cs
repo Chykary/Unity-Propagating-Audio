@@ -1,14 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PropagatingAudioSourceManager : MonoBehaviour {
-  public uint AudioClipPoolSize = 50;
+  public PropagatingHostRoom[] PredefinedRooms;
+
+  public int AudioClipPoolSize = 50;
+  public bool AutoExtendAudioPool = true;
   public GameObject Speaker;
 
   private PropagatingSpeaker[] audioSourcePool;
 
   private Dictionary<GameObject, PropagatingSoundGateway[]> RoomToNeighbourPositions;
-  private Dictionary<PropagatingAudioSource, List<PropagatingSpeaker>> ConnectedSpeakers;
+  private Dictionary<PropagatingAudioSource,PropagatingSpeaker[]> ConnectedSpeakers;
   private int poolIndex = 0;
 
   public static PropagatingAudioSourceManager Instance;
@@ -18,38 +22,43 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     Instance = this;
     DontDestroyOnLoad(this);
 
-    Debug.Assert(AudioClipPoolSize >= 10, "AudioClipSize should at least be 10");
+    Debug.Assert(AudioClipPoolSize >= 1, "AudioClipSize must at least be 1");
+    ExtendPool(AudioClipPoolSize);
 
-    audioSourcePool = new PropagatingSpeaker[AudioClipPoolSize];
-
-    for(int i = 0; i < AudioClipPoolSize; i++)
+    if(PredefinedRooms != null)
     {
-      GameObject audioSourceObject = Instantiate(Speaker, transform);
-      AudioSource audioSource = audioSourceObject.GetComponent<AudioSource>();
-      Debug.Assert(audioSource != null, "Speaker must have AudioSource");
-      audioSourcePool[i] = new PropagatingSpeaker(audioSource);
+      Setup();
     }
 	}
 
   public void Setup(IEnumerable<GameObject> rooms)
   {
     RoomToNeighbourPositions = new Dictionary<GameObject, PropagatingSoundGateway[]>();
-    ConnectedSpeakers = new Dictionary<PropagatingAudioSource, List<PropagatingSpeaker>>();    
+    ConnectedSpeakers = new Dictionary<PropagatingAudioSource, PropagatingSpeaker[]>();
 
-    foreach(GameObject gO in rooms)
+    if (PredefinedRooms != null)
+    {
+      foreach (PropagatingHostRoom hostRoom in PredefinedRooms)
+      {
+        PropagatingSoundGateway[] gateways = hostRoom.GetComponentsInChildren<PropagatingSoundGateway>(true);
+        RoomToNeighbourPositions[hostRoom.gameObject] = gateways;
+      }
+    }
+
+    foreach (GameObject gO in rooms)
     {
       PropagatingSoundGateway[] gateways = gO.GetComponentsInChildren<PropagatingSoundGateway>(true);
       RoomToNeighbourPositions[gO] = gateways;
     }
   }
 
-  private bool IsConnected(PropagatingAudioSource host) => ConnectedSpeakers.ContainsKey(host);
+  private void Setup() => Setup(new List<GameObject>());
 
   public void ForwardPlay(PropagatingAudioSource host, AudioClip clip, float volume, bool loop)
   {
     if (ConnectSpeakers(host))
     {
-      List<PropagatingSpeaker> speakers = ConnectedSpeakers[host];
+      PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
       foreach (PropagatingSpeaker speaker in speakers)
       {
         speaker.audioSource.clip = clip;
@@ -64,7 +73,7 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
   {
     if(ConnectSpeakers(host))
     {
-      List<PropagatingSpeaker> speakers = ConnectedSpeakers[host];
+      PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
       foreach(PropagatingSpeaker speaker in speakers)
       {
         speaker.audioSource.PlayOneShot(clip, volume * speaker.Dampening);
@@ -72,11 +81,17 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     }
   }
 
+  public void Disconnect(PropagatingAudioSource host)
+  {
+    PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
+    FreeSpeakers(speakers);
+  }
+
   public void ForwardStop(PropagatingAudioSource host)
   {
     if(IsConnected(host))
     {
-      List<PropagatingSpeaker> speakers = ConnectedSpeakers[host];
+      PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
       foreach(PropagatingSpeaker speaker in speakers)
       {
         speaker.audioSource.Stop();
@@ -90,7 +105,7 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
   {
     if(IsConnected(host))
     {
-      List<PropagatingSpeaker> speakers = ConnectedSpeakers[host];
+      PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
       foreach (PropagatingSpeaker speaker in speakers)
       {
         speaker.audioSource.volume = volume * speaker.Dampening;
@@ -102,25 +117,26 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
   {
     if (IsConnected(host))
     {
-      List<PropagatingSpeaker> speakers = ConnectedSpeakers[host];
+      PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
       foreach (PropagatingSpeaker speaker in speakers)
       {
         speaker.audioSource.clip = clip;
       }
     }
   }
+  
+  private bool IsConnected(PropagatingAudioSource host) => ConnectedSpeakers.ContainsKey(host);
 
   private bool ConnectSpeakers(PropagatingAudioSource host)
   {
     if (!IsConnected(host))
     {
       PropagatingSoundGateway[] gateways = RoomToNeighbourPositions[host.HostRoom];
+      PropagatingSpeaker[] speakers = new PropagatingSpeaker[gateways.Length];
 
-      List<PropagatingSpeaker> speakers = new List<PropagatingSpeaker>();
-
-      for (int i = 0; i < gateways.Length; i++)
+      for (int i = 0; i < speakers.Length; i++)
       {
-        PropagatingSpeaker speaker = GetNextFree();
+        PropagatingSpeaker speaker = GetNextFree(speakers.Length);
         if (speaker == null)
         {
           FreeSpeakers(speakers);
@@ -129,12 +145,12 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
         else
         {
           speaker.Dampening = gateways[i].Dampening;
-          speakers.Add(speaker);
+          speakers[i]= speaker;
         }
       }
 
       // All required speakers are available - position them correctly
-      for(int i  = 0; i < speakers.Count; i++)
+      for(int i  = 0; i < speakers.Length; i++)
       {
         speakers[i].audioSource.transform.position = gateways[i].SoundTarget;
       }
@@ -145,30 +161,64 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     return true;
   }
 
-  private PropagatingSpeaker GetNextFree()
+  private PropagatingSpeaker GetNextFree(int required)
   {
-    for(int i = 0; i < 50; i++)
+    for (int i = 0; i < audioSourcePool.Length; i++)
     {
-      if(!audioSourcePool[poolIndex].Connected)
+      if (!audioSourcePool[poolIndex].Connected)
       {
-        audioSourcePool[poolIndex].Connected = true;
-        poolIndex++;
-        return audioSourcePool[poolIndex - 1];
+        PropagatingSpeaker ps = audioSourcePool[poolIndex];
+        ps.Connected = true;
+        return ps;
       }
-      else
-      {
-        poolIndex = (int)((poolIndex + 1) % AudioClipPoolSize);
-      }
+
+      poolIndex = (poolIndex + 1) % AudioClipPoolSize;
     }
-    Debug.Log("Propagating Audio Pool ran out of audio sources");
-    return null;
+
+    if(AutoExtendAudioPool)
+    {
+      Debug.Log("Extending Audio Pool, initial size was not enough");
+      ExtendPool(required);
+      return GetNextFree(required);
+    }
+    else
+    {
+      Debug.Log("Propagating Audio Pool ran out of audio sources");
+      return null;
+    }
   }
 
-  private void FreeSpeakers(List<PropagatingSpeaker> speakers)
+  private void FreeSpeakers(PropagatingSpeaker[] speakers)
   {
     foreach(PropagatingSpeaker speaker in speakers)
     {
       speaker.Connected = false;
     }
+  }
+
+  private void ExtendPool(int count)
+  {
+    if (audioSourcePool == null)
+    {
+      AudioClipPoolSize = 0;
+      audioSourcePool = new PropagatingSpeaker[count];
+    }
+    else
+    {
+      PropagatingSpeaker[] newPool = new PropagatingSpeaker[AudioClipPoolSize + count];
+      Array.Copy(audioSourcePool, newPool, audioSourcePool.Length);
+      audioSourcePool = newPool;
+    }
+    
+    for (int i = AudioClipPoolSize; i < AudioClipPoolSize + count; i++)
+    {
+      GameObject audioSourceObject = Instantiate(Speaker, transform);
+      AudioSource audioSource = audioSourceObject.GetComponent<AudioSource>();
+      Debug.Assert(audioSource != null, "Speaker must have AudioSource");
+
+      audioSourcePool[i] = new PropagatingSpeaker(audioSource);
+    }
+
+    AudioClipPoolSize = audioSourcePool.Length;
   }
 }

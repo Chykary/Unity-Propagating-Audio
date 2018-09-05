@@ -9,47 +9,52 @@ Prefab:
     m_Modifications: []
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 0}
-  m_RootGameObject: {fileID: 1530689634371688}
+  m_RootGameObject: {fileID: 1846486686735710}
   m_IsPrefabAsset: 1
---- !u!1 &1530689634371688
+--- !u!1 &1846486686735710
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4526928128973694}
-  - component: {fileID: 114841629276198070}
+  - component: {fileID: 4473303645649774}
+  - component: {fileID: 114137322743991472}
   m_Layer: 0
-  m_Name: PropagatingAudioSourceManager
+  m_Name: Boom
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &4526928128973694
+--- !u!4 &4473303645649774
 Transform:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1530689634371688}
+  m_GameObject: {fileID: 1846486686735710}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 605.3994, y: 194.7576, z: -12.343846}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &114841629276198070
+--- !u!114 &114137322743991472
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1530689634371688}
+  m_GameObject: {fileID: 1846486686735710}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1033462addad57844961ece3c0c5fef2, type: 3}
+  m_Script: {fileID: 11500000, guid: 05689dbfbdbfdf84ca7569f4ce62330b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  AudioClipPoolSize: 50
-  Speaker: {fileID: 1004325773649662, guid: 2ec2c6afdca64924b8d87d2930df7803, type: 2}
+  RollOfMode: 1
+  MaxDistance: 20
+  Clip: {fileID: 8300000, guid: 8f729899cd64dce4499d8ef4ec855fea, type: 3}
+  Volume: 1
+  PlayOnAwake: 1
+  Loop: 0
+  HostRoom: {fileID: 0}

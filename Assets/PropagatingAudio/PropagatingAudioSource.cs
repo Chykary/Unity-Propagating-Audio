@@ -16,6 +16,8 @@ public class PropagatingAudioSource : MonoBehaviour {
 
   public PropagatingAudioSourceManager Manager => PropagatingAudioSourceManager.Instance;
 
+  public bool isPlaying => WrappedAudioSource.isPlaying;
+
   public float volume
   {
     get
@@ -146,5 +148,10 @@ public class PropagatingAudioSource : MonoBehaviour {
     }
 
     volume = targetVolume;
+  }
+
+  private void OnDestroy()
+  {
+    Manager.Disconnect(this);
   }
 }
