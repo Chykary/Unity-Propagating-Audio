@@ -22,7 +22,7 @@ GameObject:
   - component: {fileID: 212698542084701102}
   - component: {fileID: 82026714765561100}
   m_Layer: 0
-  m_Name: Radio
+  m_Name: radio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
