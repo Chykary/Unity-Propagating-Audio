@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Linq;
 using UnityEngine;
 
 public class PropagatingAudioSource : MonoBehaviour {
@@ -12,7 +13,7 @@ public class PropagatingAudioSource : MonoBehaviour {
 
   private AudioSource WrappedAudioSource;
 
-  public GameObject HostRoom;
+  public GameObject HostRoom { get; set; }
 
   public PropagatingAudioSourceManager Manager => PropagatingAudioSourceManager.Instance;
 
@@ -70,8 +71,10 @@ public class PropagatingAudioSource : MonoBehaviour {
 
 
   private void Start () {
-    HostRoom = GetComponentInParent<PropagatingHostRoom>().gameObject;
-    Debug.Assert(HostRoom != null, "Propagating Audio Source not a child of host room");
+    PropagatingHostRoom phr = GetComponentInParent<PropagatingHostRoom>();
+    Debug.Assert(phr != null, "Propagating Audio Source not a child of host room");
+    HostRoom = phr.gameObject;
+    
 
     WrappedAudioSource = gameObject.AddComponent<AudioSource>();
     WrappedAudioSource.spatialBlend = 1f;

@@ -13,21 +13,28 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
 
   private Dictionary<GameObject, PropagatingSoundGateway[]> RoomToNeighbourPositions;
   private Dictionary<PropagatingAudioSource,PropagatingSpeaker[]> ConnectedSpeakers;
+  private Dictionary<PropagatingSpeaker, PropagatingAudioSource> SpeakerToOrigin;
   private int poolIndex = 0;
 
   public static PropagatingAudioSourceManager Instance;
 
 	private void Awake () {
-    Debug.Assert(Instance == null, "More than one PropagatingAudioSourceManager is not allowed");
-    Instance = this;
-    DontDestroyOnLoad(this);
-
-    Debug.Assert(AudioClipPoolSize >= 1, "AudioClipSize must at least be 1");
-    ExtendPool(AudioClipPoolSize);
-
-    if(PredefinedRooms != null)
+    if (Instance == null)
     {
-      Setup();
+      Instance = this;
+      DontDestroyOnLoad(this);
+
+      Debug.Assert(AudioClipPoolSize >= 1, "AudioClipSize must at least be 1");
+      ExtendPool(AudioClipPoolSize);
+
+      if (PredefinedRooms != null)
+      {
+        Setup();
+      }
+    }
+    else
+    {
+      Destroy(this);
     }
 	}
 
@@ -35,6 +42,7 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
   {
     RoomToNeighbourPositions = new Dictionary<GameObject, PropagatingSoundGateway[]>();
     ConnectedSpeakers = new Dictionary<PropagatingAudioSource, PropagatingSpeaker[]>();
+    SpeakerToOrigin = new Dictionary<PropagatingSpeaker, PropagatingAudioSource>();
 
     if (PredefinedRooms != null)
     {
@@ -83,8 +91,11 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
 
   public void Disconnect(PropagatingAudioSource host)
   {
-    PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
-    FreeSpeakers(speakers);
+    if (ConnectedSpeakers.ContainsKey(host))
+    {
+      PropagatingSpeaker[] speakers = ConnectedSpeakers[host];
+      FreeSpeakers(speakers);
+    }
   }
 
   public void ForwardStop(PropagatingAudioSource host)
@@ -97,7 +108,6 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
         speaker.audioSource.Stop();
       }
       FreeSpeakers(speakers);
-      ConnectedSpeakers.Remove(host);
     }
   }  
 
@@ -153,6 +163,7 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
       for(int i  = 0; i < speakers.Length; i++)
       {
         speakers[i].audioSource.transform.position = gateways[i].SoundTarget;
+        SpeakerToOrigin[speakers[i]] = host;
       }
 
       ConnectedSpeakers[host] = speakers;
@@ -175,6 +186,23 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
       poolIndex = (poolIndex + 1) % AudioClipPoolSize;
     }
 
+    // Run "Garbage Collector" before extending pool
+
+    for (int i = 0; i < audioSourcePool.Length; i++)
+    {
+      if (!audioSourcePool[poolIndex].IsPlaying)
+      {
+        PropagatingSpeaker registered = audioSourcePool[poolIndex];
+        if (SpeakerToOrigin.ContainsKey(registered))
+        {
+          PropagatingAudioSource origin = SpeakerToOrigin[registered];
+          FreeSpeakers(ConnectedSpeakers[origin]);
+        }
+
+        return audioSourcePool[poolIndex];
+      }
+    }
+
     if(AutoExtendAudioPool)
     {
       Debug.Log("Extending Audio Pool, initial size was not enough");
@@ -192,8 +220,26 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
   {
     foreach(PropagatingSpeaker speaker in speakers)
     {
-      speaker.Connected = false;
+      FreeSpeaker(speaker);
+      if(SpeakerToOrigin.ContainsKey(speaker))
+      {
+        SpeakerToOrigin.Remove(speaker);
+      }
     }
+  }
+
+  private void FreeSpeaker(PropagatingSpeaker speaker)
+  {
+    if(SpeakerToOrigin.ContainsKey(speaker))
+    {
+      PropagatingAudioSource origin = SpeakerToOrigin[speaker];
+      if(ConnectedSpeakers.ContainsKey(origin))
+      {
+        ConnectedSpeakers.Remove(origin);
+      }
+    }
+
+    speaker.Connected = false;
   }
 
   private void ExtendPool(int count)

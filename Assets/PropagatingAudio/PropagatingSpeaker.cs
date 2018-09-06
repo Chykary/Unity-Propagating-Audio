@@ -3,6 +3,8 @@
 public class PropagatingSpeaker {
   public AudioSource audioSource;
 
+  public bool IsPlaying => audioSource.isPlaying;
+
   private bool connected;
   public bool Connected
   {
@@ -13,7 +15,11 @@ public class PropagatingSpeaker {
     set
     {
       connected = value;
-      audioSource.gameObject.SetActive(connected);
+      // Required for Game Shutdown (AudioSource will be destroyed)
+      if (audioSource != null)
+      {
+        audioSource.gameObject.SetActive(connected);
+      }
     }
   }
   public float Dampening;
