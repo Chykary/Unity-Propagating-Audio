@@ -1,19 +1,42 @@
 ﻿using System.Collections;
-using System.Linq;
 using UnityEngine;
 
 public class PropagatingAudioSource : MonoBehaviour {
+  //Set this to false if the object is moving host rooms, in which case the host room is determined on-demand (causes more load)
+  public bool ObjectStationary = true;
+  //If this is set to true, the host room must be set outside and will not be fetched on demand. This can cause a null exception if set to true and the dev forgets to assign the room.
+  public bool HostRoomManualSet = false;
+
   public AudioRolloffMode RollOfMode = AudioRolloffMode.Linear;
   public float MaxDistance = 20f;
-
   public AudioClip Clip;
+
   public float Volume = 1f;
   public bool PlayOnAwake;
   public bool Loop;
 
   private AudioSource WrappedAudioSource;
 
-  public GameObject HostRoom { get; set; }
+  private GameObject hostRoom;
+  public GameObject HostRoom
+  {
+    get
+    {
+      if (ObjectStationary || HostRoomManualSet)
+      {
+        // Must have been set in Start() or outside
+        return hostRoom;
+      }
+      else
+      {
+        return GetComponentInParent<PropagatingHostRoom>().gameObject;
+      }
+    }
+    set
+    {
+      hostRoom = value;
+    }
+  }
 
   public PropagatingAudioSourceManager Manager => PropagatingAudioSourceManager.Instance;
 
@@ -71,10 +94,12 @@ public class PropagatingAudioSource : MonoBehaviour {
 
 
   private void Start () {
-    PropagatingHostRoom phr = GetComponentInParent<PropagatingHostRoom>();
-    Debug.Assert(phr != null, "Propagating Audio Source not a child of host room");
-    HostRoom = phr.gameObject;
-    
+    if (ObjectStationary)
+    {
+      PropagatingHostRoom phr = GetComponentInParent<PropagatingHostRoom>();
+      Debug.Assert(phr != null, $"Propagating Audio Source of {gameObject.name} not a child of host room");
+      HostRoom = phr.gameObject;
+    }   
 
     WrappedAudioSource = gameObject.AddComponent<AudioSource>();
     WrappedAudioSource.spatialBlend = 1f;

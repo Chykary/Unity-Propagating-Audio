@@ -172,6 +172,7 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     return true;
   }
 
+
   private PropagatingSpeaker GetNextFree(int required)
   {
     for (int i = 0; i < audioSourcePool.Length; i++)
@@ -187,33 +188,45 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     }
 
     // Run "Garbage Collector" before extending pool
-
-    for (int i = 0; i < audioSourcePool.Length; i++)
+    if (GarbageCollect(required))
     {
-      if (!audioSourcePool[poolIndex].IsPlaying)
-      {
-        PropagatingSpeaker registered = audioSourcePool[poolIndex];
-        if (SpeakerToOrigin.ContainsKey(registered))
-        {
-          PropagatingAudioSource origin = SpeakerToOrigin[registered];
-          FreeSpeakers(ConnectedSpeakers[origin]);
-        }
-
-        return audioSourcePool[poolIndex];
-      }
-    }
-
-    if(AutoExtendAudioPool)
-    {
-      Debug.Log("Extending Audio Pool, initial size was not enough");
-      ExtendPool(required);
+      poolIndex = 0;
       return GetNextFree(required);
     }
     else
     {
-      Debug.Log("Propagating Audio Pool ran out of audio sources");
-      return null;
+      if (AutoExtendAudioPool)
+      {
+        Debug.Log("Extending Audio Pool, initial size was not enough");
+        ExtendPool(required);
+        return GetNextFree(required);
+      }
+      else
+      {
+        Debug.Log("Propagating Audio Pool ran out of audio sources");
+        return null;
+      }
     }
+  }
+
+  private bool GarbageCollect(int required)
+  {
+    int collected = 0;
+    for (int i = 0; i < audioSourcePool.Length; i++)
+    {
+      if (!audioSourcePool[i].IsPlaying)
+      {
+        PropagatingSpeaker registered = audioSourcePool[i];
+        if (SpeakerToOrigin.ContainsKey(registered))
+        {
+          PropagatingAudioSource origin = SpeakerToOrigin[registered];
+          FreeSpeakers(ConnectedSpeakers[origin]);
+          collected++;
+        }
+      }
+    }
+
+    return collected >= required;
   }
 
   private void FreeSpeakers(PropagatingSpeaker[] speakers)
@@ -221,10 +234,6 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     foreach(PropagatingSpeaker speaker in speakers)
     {
       FreeSpeaker(speaker);
-      if(SpeakerToOrigin.ContainsKey(speaker))
-      {
-        SpeakerToOrigin.Remove(speaker);
-      }
     }
   }
 
@@ -233,7 +242,9 @@ public class PropagatingAudioSourceManager : MonoBehaviour {
     if(SpeakerToOrigin.ContainsKey(speaker))
     {
       PropagatingAudioSource origin = SpeakerToOrigin[speaker];
-      if(ConnectedSpeakers.ContainsKey(origin))
+      SpeakerToOrigin.Remove(speaker);
+
+      if (ConnectedSpeakers.ContainsKey(origin))
       {
         ConnectedSpeakers.Remove(origin);
       }
